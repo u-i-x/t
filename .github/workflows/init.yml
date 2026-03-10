@@ -1,0 +1,55 @@
+name: init
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Name of app (e.g. my-app)'
+        required: true
+        default: 'my-app'
+      preset:
+        description: 'Shadcn preset'
+        required: true
+        default: 'a1D0dv72'
+
+jobs:
+  create-app:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Cleanup
+      run: |
+        shopt -s extglob
+        find . -mindepth 1 ! -path "./.github*" -exec rm -rf {} +
+
+    - name: Setup pnpm
+      uses: pnpm/action-setup@v4
+      with:
+        version: 10
+        
+    - name: Create App
+      run: pnpm dlx shadcn@latest init --base base --template start --monorepo --preset ${{ inputs.preset }} --name ${{ inputs.name }}
+
+    - name: Move app to root
+      run: |
+        shopt -s dotglob
+        mv ${{ inputs.name }}/* .
+        rmdir ${{ inputs.name }}
+
+    - name: Commit changes
+      run: |
+        git init
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+        git add .
+        git commit -m 'Set up app using Github Actions'
+
+    - name: Push changes
+      uses: ad-m/github-push-action@v0.6.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: main
+        force: true
